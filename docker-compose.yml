@@ -1,0 +1,86 @@
+version: '3'
+
+services:
+  admin_api:
+    build:
+      context: ./admin_api
+      dockerfile: Dockerfile
+    container_name: admin_api
+    ports:
+      - "8080:8080"
+    environment:
+      - DJANGO_SETTINGS_MODULE=core.settings
+    volumes:
+      - ./admin_api:/app
+    command: >
+      sh -c "
+        python manage.py makemigrations &&
+        python manage.py migrate &&
+        python manage.py runserver 0.0.0.0:8080
+      "
+
+  frontend_api:
+    build:
+      context: ./frontend_api
+      dockerfile: Dockerfile
+    container_name: frontend_api
+    ports:
+      - "8000:8000"
+    environment:
+      - DJANGO_SETTINGS_MODULE=core.settings
+    volumes:
+      - ./frontend_api:/app
+    command: >
+      sh -c "
+        python manage.py makemigrations &&
+        python manage.py migrate &&
+        python manage.py runserver 0.0.0.0:8000
+      "
+
+  consumer_admin:
+    build:
+      context: ./admin_api
+      dockerfile: Dockerfile
+    container_name: consumer_admin
+    working_dir: /app
+    volumes:
+      - ./admin_api:/app
+    command: >
+      sh -c "
+        python manage.py makemigrations &&
+        python manage.py migrate &&
+        python consumers.py
+      "
+    environment:
+      - DJANGO_SETTINGS_MODULE=core.settings
+    healthcheck:
+      test: ["CMD", "python", "/app/consumers.py"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  consumer_frontend:
+    build:
+      context: ./frontend_api
+      dockerfile: Dockerfile
+    container_name: consumer_frontend
+    working_dir: /app
+    volumes:
+      - ./frontend_api:/app
+    command: >
+      sh -c "
+        python manage.py makemigrations &&
+        python manage.py migrate &&
+        python consumers.py
+      "
+    environment:
+      - DJANGO_SETTINGS_MODULE=core.settings
+    healthcheck:
+      test: ["CMD", "python", "/app/consumers.py"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  default:
+    driver: bridge
